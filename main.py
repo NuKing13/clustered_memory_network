@@ -214,7 +214,8 @@ def run(
     rec_inp=False,
     raw_path=False,
 ):
-'''
+
+    '''
     run the network and safe the data
     
     Args:

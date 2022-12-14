@@ -1,5 +1,6 @@
 from datetime import time
 from seaborn.matrix import heatmap
+from sys import argv
 import signals as sg
 import numpy as np
 import pickle
@@ -24,7 +25,7 @@ colours = list(plt.rcParams["axes.prop_cycle"].by_key()["color"])
 def load_results(
     folder, data_type="json", trans_cap_data=False
 ):  # , lable = {'r_bg' : [], 'g' : [], 'marker': ''}):
-    results = []
+    results = [] #dict list
     for path in os.listdir(folder):
         fi = os.path.join(folder, path)
         if data_type == "json":
@@ -764,7 +765,7 @@ def rasta_nmda(
 ):
     with open(raw_data, "rb") as file:
         data = pickle.load(file)
-        breakpoint()
+        #breakpoint()
     with open(results, "rb") as file:
         results = json.load(file)
 
@@ -1129,12 +1130,14 @@ def plot_cap_heatmap(folder_caps=False, lable=False, plotcap=True):
 if __name__ == "__main__":
 
     # fig, axs = plt.subplots(2)
-    path = "/home/boettcher/proj/clustered_memory_network/out_data/test_stats_const_rate/"
+    path = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/"
+    path_raw = "raw/" + argv[1] #"raw/raw_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.p" 
+    path_res = "res/" + argv[2] #"res/_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.json"
     rasta_nmda(
         path
-        + "raw/raw_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.p",
+        + path_raw,
         path
-        + "res/_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.json",
+        + path_res,
         plotrange=(0000, 4000),
     )
     plt.show()
