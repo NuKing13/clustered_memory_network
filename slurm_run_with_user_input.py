@@ -28,7 +28,7 @@ run(
     c=cmod,             #0.2    #
     iw_fac=1.19,
     inp_type=Input.CONST_RATE,
-    t_sim=1000,
+    t_sim=10000,
     inp_str=0.1,
     tstep=50.0,
     steps=100,

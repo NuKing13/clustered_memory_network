@@ -1129,40 +1129,32 @@ def plot_cap_heatmap(folder_caps=False, lable=False, plotcap=True):
 
 if __name__ == "__main__":
 
-    fig, axs = plt.subplots(2,3)
+    fig, axs = plt.subplots(2,2)
     fig.suptitle(argv[1], fontsize=20)
     
     #usage: name_of_src_folder
     path = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/"
-    path_res_folder = argv[1] + "/res/"
+    path_res_folder = argv[1] + "res/"
     
     coolwarm = sns.color_palette("coolwarm", as_cmap=True)
     
-    name = ["avg_rate", "avg_cv", "avg_cc", "relative_upstate", "relative_upstate", "N_silent"] #column name of data to plot
-    title = ["average rate [Hz]", "CV", "CC", "rel. upstate (cap 0.075)", "rel. upstate (cap. 0.25)", "silent neurons"]
+    name = ["avg_rate", "avg_cv", "avg_cc", "relative_upstate"] #column name of data to plot
+    title = ["average rate [Hz]", "CV", "CC", "rel. upstate [%]"]
     
     for i in range (0,2):
-        for j in range (0,3):
-            if title[3 * i + j] == "rel. upstate (cap 0.075)":
-                cmap_lim=[None, 0.075]
-            elif title[3 * i + j] == "rel. upstate (cap. 0.25)":
-                cmap_lim=[None, 0.25]
-            elif title[3 * i + j] == "silent neurons":
-                cmap_lim=[None, 1000]
-            else:
-                cmap_lim=[None, None]
+        for j in range (0,2):
                 
             pretty_heatmap(
                 path 
                 + path_res_folder,
                 ax=axs[i][j],
-                name=name[i*3 + j],
+                name=name[i*2 + j],
                 cmap=coolwarm,
                 y="r_bg",
                 x="g",
-                title=title[i*3 + j],
+                title=title[i*2 + j],
                 fontsize=18,
-                cmap_lim=cmap_lim,
+                cmap_lim=[None,None],
                 cbar_shrink=0.7,
             )
         
