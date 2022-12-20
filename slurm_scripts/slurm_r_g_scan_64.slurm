@@ -1,5 +1,5 @@
 #!/bin/bash
-#input order: r_start r_stop r_stepsize g_start g_stop g_stepsize n mod cmod
+#input order: r_start r_stepsize r_num_steps g_start g_stepsize g_num_steps n mod cmod
 
 #SBATCH --job-name=r_g_scan_64
 #SBATCH --output=ostendorf_r_g_scan_64_%j.out
@@ -9,7 +9,7 @@
 #SBACTH --ntasks=64
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=512G
-#SBATCH --time=06:00:00
+#SBATCH --time=00:30:00
 #SBATCH --exclusive
 #SBATCH --partition=dc-cpu
 
@@ -35,11 +35,22 @@ source /p/project/jinm60/users/ostendorf1/Thesis_Git/venvs/cm_nest/bin/activate
 
 source /p/project/jinm60/users/ostendorf1/Thesis_Git/venvs/cm_nest/bin/nest_vars.sh
 
-NAME="r_g_scan_64"
+N=$7
+R_START=$1
+#R_STOP=$2 deprecated usage
+R_STEP=$2
+G_START=$4
+#G_STOP=$5 deprecated usage
+G_STEP=$5
+MOD=0.0 #$8 unused
+CMOD=0.2 #$9 unused
+
+NAME="scan_n${N}_r${R_START}-${R_STOP}_step${R_STEP}_g${G_START}-${G_STOP}_step${G_STEP}_mod${MOD}_c${CMOD}"
+
 CPUS=4
 
-R_STEPSIZE_TEST=$(python -c 'from sys import argv; print(int(1)) if float(argv[1]) > 0.0 else print(int(0))' "$3")
-G_STEPSIZE_TEST=$(python -c 'from sys import argv; print(int(1)) if float(argv[1]) > 0.0 else print(int(0))' "$6")
+R_STEPSIZE_TEST=$(python -c 'from sys import argv; print(int(1)) if float(argv[1]) > 0.0 else print(int(0))' "$2")
+G_STEPSIZE_TEST=$(python -c 'from sys import argv; print(int(1)) if float(argv[1]) > 0.0 else print(int(0))' "$5")
 
 if [ $R_STEPSIZE_TEST -eq 0 ]
 then 
@@ -52,28 +63,37 @@ then
 fi
 
 CURRENT_RATE=$1
-R_RUNS=$(python -c 'from sys import argv; res=((float(argv[2]) - float(argv[1])) / float(argv[3])); print(int(res))' "$1" "$2" "$3")
-G_RUNS=$(python -c 'from sys import argv; res=((float(argv[2]) - float(argv[1])) / float(argv[3])); print(int(res))' "$4" "$5" "$6")
-TOTAL_RUNS=$((($R_RUNS + 1) * ($G_RUNS + 1)))
+
+#usage deprecated
+#R_RUNS=$(python -c 'from sys import argv; res=((float(argv[2]) - float(argv[1])) / float(argv[3])); print(int(res))' "$1" "$2" "$3")
+#G_RUNS=$(python -c 'from sys import argv; res=((float(argv[2]) - float(argv[1])) / float(argv[3])); print(int(res))' "$4" "$5" "$6")
+TOTAL_RUNS=$(($3 * $6))
 
 if [ $TOTAL_RUNS -ne 64 ]
 then 
 	echo number of combined runs does not match selected script
-	echo remember that r_stop and g_stop are inclusive
+	#echo remember that r_stop and g_stop are inclusive
 	exit
 fi
 
+R_STOP=$(($1 + $2 * ($3 - 1))) 
+G_STOP=$(($4 + $5 * ($6 - 1))) 
+echo r stops at $R_STOP
+echo g stops at $G_STOP
+
+R_RUNS=$(($3 - 1))
+G_RUNS=$(($6 - 1))
 for (( c=0; c<=$R_RUNS; c++ ))
 do
 CURRENT_STRENGTH=$4
 
 	for (( d=0; d<=$G_RUNS; d++ ))
 	do
-		srun --exclusive -n 4 python slurm_run_with_user_input.py $7 $CURRENT_RATE $CURRENT_STRENGTH $CPUS $NAME $MOD $CMOD & #order: n r g cpus_per_task name
-		CURRENT_STRENGTH=$(python -c 'from sys import argv; print(float(argv[1]) + float(argv[2]))' "$CURRENT_STRENGTH" "$6")
+		srun --exclusive --ntasks=1 python slurm_run_with_user_input.py $N $CURRENT_RATE $CURRENT_STRENGTH $CPUS $NAME $MOD $CMOD & #order: n r g cpus_per_task name mod c
+		CURRENT_STRENGTH=$(python -c 'from sys import argv; print(float(argv[1]) + float(argv[2]))' "$CURRENT_STRENGTH" "$5")
 	done
 	
-	CURRENT_RATE=$(python -c 'from sys import argv; print(float(argv[1]) + float(argv[2]))' "$CURRENT_RATE" "$3")
+	CURRENT_RATE=$(python -c 'from sys import argv; print(float(argv[1]) + float(argv[2]))' "$CURRENT_RATE" "$2")
 done 
 
 wait
