@@ -107,7 +107,7 @@ def pretty_heatmap(
     cmap,
     y,
     x,
-    title="",
+    title="heatmap_test",
     fontsize=18,
     cmap_lim=[None, None],
     cbar_shrink=0.7,
@@ -1128,16 +1128,68 @@ def plot_cap_heatmap(folder_caps=False, lable=False, plotcap=True):
 
 
 if __name__ == "__main__":
-
-    # fig, axs = plt.subplots(2)
-    path = "/home/noah/Thesis_Git/clustered_memory_network/output/" + argv[1]
-    path_raw = "raw/" + argv[2] #"raw/raw_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.p" 
-    path_res = "res/" + argv[3] #"res/_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.json"
-    rasta_nmda(
-        path
-        + path_raw,
-        path
-        + path_res,
-        plotrange=(0000, 4000),
-    )
+    
+    fig = plt.figure()
+    subfigs = fig.subfigures(2,1, height_ratios=[1,3])
+    axs0 = subfigs[0].subplots(1,1)
+    axs1 = subfigs[1].subplots(5,6)
+    fig.suptitle("n" + argv[1] + "_" + argv[2], fontsize=20) #usage: #neurons value_to_plot
+    
+    r_start = "7.0"
+    r_end = "14.0"
+    
+    if argv[1] == "2500":
+        r_start = "7.0"
+        r_end = "14.0"
+    elif argv[1] == "5000":
+        r_start = "6.0"
+        r_end = "13.0"
+    elif argv[1] == "10000":
+        r_start = "5.0"
+        r_end = "12.0"
+     
+    #usage: name_of_src_folder
+    path_default = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/" + "n" + argv[1] + "_scans" + "/default_full_scan_mod0.0_c0.2/res/"
+    path_detail = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/" + "n" + argv[1] + "_scans" + "/detail_scans_r" + r_start + "-" + r_end + "_g5.0-32.0"
+    
+    coolwarm = sns.color_palette("coolwarm", as_cmap=True)
+    
+    name = argv[2] #column name of data to plot
+      
+    pretty_heatmap(
+                path_default,
+                ax=axs0,
+                name=name,
+                cmap=coolwarm,
+                y="r_bg",
+                x="g",
+                title="n" + argv[1] + "_" + argv[2] + "_default_full_scan_mod0.0_c0.2",
+                fontsize=18,
+                cmap_lim=[None,None],
+                cbar_shrink=0.7,
+            )
+    mod_array = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
+    c_array = ["0.2", "0.4", "0.6", "0.8", "1.0"]
+    cmap_lim = [None,None]
+    for i in range (0,5):
+        for j in range (0,6):
+            
+            mod = mod_array[j]
+            c = c_array[i]
+            path_end = "/scan_n" + argv[1] + "_r" + r_start + "-" + r_end + "_step1.0_g5.0-32.0_step1.0_mod" + mod + "_c" + c + "/res/"
+            title = "mod" + mod + "_c" + c
+                
+            pretty_heatmap(
+                path_detail + path_end,
+                ax=axs1[i][j],
+                name=name,
+                cmap=coolwarm,
+                y="r_bg",
+                x="g",
+                title=title,
+                fontsize=18,
+                cmap_lim=cmap_lim,
+                cbar_shrink=0.7,
+            )
+        
     plt.show()

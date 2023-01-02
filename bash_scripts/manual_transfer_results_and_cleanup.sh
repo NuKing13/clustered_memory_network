@@ -1,5 +1,5 @@
 #!/bin/bash
-#input: n mod c
+#input: n mod c r_stop
 
 cd ../output/jureca_scans/
 
@@ -18,12 +18,12 @@ elif [ $N -eq 10000 ]
 then
 	R=5.0
 else
-	echo unexpected neuron number
+	echo unecpected neuron number
 	exit
 fi
 
-SRC="ostendorf1@jureca.fz-juelich.de:/p/project/jinm60/users/ostendorf1/Thesis_Git/clustered_memory_network/output/scan_*/res"
-DEST="/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/scan_n${N}_r${R}-32.0_step1.0_g5.0-32.0_step1.0_mod${MOD}_c${C}"
+SRC="ostendorf1@jureca.fz-juelich.de:/p/project/jinm60/users/ostendorf1/Thesis_Git/clustered_memory_network/output/*mod${MOD}_c${C}*/res"
+DEST="/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/scan_n${N}_r${R}-${4}_step1.0_g5.0-32.0_step1.0_mod${MOD}_c${C}"
 
 rsync -a $SRC $DEST
 
@@ -53,7 +53,6 @@ rm $(ls | grep g35)
 rm $(ls | grep g36)
 
 mv tmp /home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/overscanned_data/$EXPORT
-#rm -r -d tmp
 
 cd ../..
 

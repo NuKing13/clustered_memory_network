@@ -1,9 +1,9 @@
 #!/bin/bash
 
-TEST=$(ssh test_squeue_grep | grep jrc0014)
-if [ "${TEST}" = "" ]
+TEST=$(ssh test_squeue | grep ostendor)
+if [ "${TEST}" != "" ]
 then
-	echo no jobs queued
-else 
 	echo jobs queued
+else 
+	echo no jobs queued
 fi

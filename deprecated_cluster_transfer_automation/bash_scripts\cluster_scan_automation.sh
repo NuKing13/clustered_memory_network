@@ -5,57 +5,70 @@
 #set n mod c local
 N=$1
 MOD=$3
-C=$5
+C=$4
 
 cd ..
 
-set_param_files.py $N $MOD $C
+python set_param_files.py $N $MOD $C
 rsync -a /home/noah/Thesis_Git/clustered_memory_network/slurm_scripts/automation_parameters ostendorf1@jureca.fz-juelich.de:/p/project/jinm60/users/ostendorf1/Thesis_Git/clustered_memory_network/slurm_scripts/
 
 while [ $N -le $2 ]
 do
-	#update n mod c on remote host
-	set_param_files.py $N $MOD $C
+	#update n mod c on local and remote host
+	N=$(python read_param_from_file.py N)
+	MOD=$(python read_param_from_file.py MOD)
+	C=$(python read_param_from_file.py C)
+	python set_param_files.py $N $MOD $C
 	rsync -a /home/noah/Thesis_Git/clustered_memory_network/slurm_scripts/automation_parameters ostendorf1@jureca.fz-juelich.de:/p/project/jinm60/users/ostendorf1/Thesis_Git/clustered_memory_network/slurm_scripts/
 	
+	echo "Starting new scan."
 	ssh start_job
+	echo "Jobs queued."
 	
 	#wait for all jobs to complete
-	TEST_COMPLETION=$(ssh test_squeue | grep ostendorf1)
+	TEST_COMPLETION=$(ssh test_squeue | grep ostendor)
 	while [ "$TEST_COMPLETION" != "" ]
 	do 
+		echo "Jobs are still queued." 
+		echo "Going to sleep."
 		sleep 5m
-		TEST_COMPLETION=$(ssh test_squeue | grep ostendorf1)
+		echo "Testing empty queue again."
+		TEST_COMPLETION=$(ssh test_squeue | grep ostendor)
 	done
 	
 	cd bash_scripts/
 	
 	#transfer results and store them properly on local machine
-	transfer_results_and_cleanup.sh $N $MOD $C
+	echo "Transferring results."
+	./transfer_results_and_cleanup.sh $N $MOD $C
+	echo "Transfer complete."
 	
 	cd ..
 	
+	echo "Cleaning up cluster."
 	ssh clean_up
+	echo "Clean up complete."
 		
 	#update n mod c on local host in preperation of next scan step
-	if [ $MOD = 1.0 && $C = 1.0 ]
+	echo "Updating param files."
+	if [[ "${MOD}" = "1.0" ]] && [[ "${C}" = "1.0" ]]
 	then
 		python update_param_file.py N
 		python update_param_file.py MOD
 		python update_param_file.py C
-	elif [ $C = 1.0 && $MOD != 1.0 ]
+	elif [[ "${MOD}" = "1.0" ]] && [[ "${C}" != "1.0" ]]
 	then
 		python update_param_file.py MOD
 		python update_param_file.py C
 	else
-		python update_param_file.py C
+		python update_param_file.py MOD
 	fi
 	
 	#give possibility for early interrupt
 	echo "Finished scan."
 	echo "Parameters: N - ${N}; MOD - ${MOD}; C - ${C}"
 	echo "Enter \"exit\" to quit now"
-	read -t 30 BREAK
+	read -t 15 BREAK
 	
 	if [ "${BREAK}" = "exit" ]
 	then

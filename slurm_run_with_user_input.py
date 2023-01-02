@@ -4,7 +4,7 @@ from main import run, PostProcessing, Inhibition, Input
 from neuron import L5pyr_simp_sym
 from neuron import Single_comp
 
-#usage: python3 script_test.py n r g cpus_per_task name
+#usage: python3 script_test.py n r g cpus_per_task name mod cmod save_raw n_dend
 n_neurons = int (argv[1])
 bg_rate = float (argv[2])
 inhib_strength = float (argv[3])
@@ -13,6 +13,11 @@ cores = int (argv[4])
 name = argv[5]
 mod = float (argv[6])
 cmod = float (argv[7])
+save_raw = True
+n_dend= int (argv[9])
+
+if argv[8] == "false" :
+    save_raw = False
 
 run(
     job_name=name,
@@ -38,4 +43,5 @@ run(
     post_proc=PostProcessing.NETWORK_NMDA_STATS,
     rec_plottrace=False,
     rec_inp=False,
+    save_raw=save_raw
 )
