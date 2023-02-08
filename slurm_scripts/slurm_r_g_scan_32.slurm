@@ -1,5 +1,5 @@
 #!/bin/bash
-#input order: r_start r_stepsize r_num_steps g_start g_stepsize g_num_steps n mod cmod
+#input order: r_start r_stepsize r_num_steps g_start g_stepsize g_num_steps n mod cmod raw_flag n_cl
 
 #SBATCH --job-name=r_g_scan_32
 #SBATCH --output=ostendorf_r_g_scan_32_%j.out
@@ -9,7 +9,7 @@
 #SBACTH --ntasks=32
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=512G
-#SBATCH --time=03:00:00
+#SBATCH --time=01:30:00
 #SBATCH --exclusive
 #SBATCH --partition=dc-cpu
 
@@ -42,8 +42,16 @@ R_STEP=$2
 G_START=$4
 #G_STOP=$5 deprecated usage
 G_STEP=$5
-MOD=0.0 #$8
-CMOD=0.2 #$9
+MOD=$8
+CMOD=$9
+SAVE=${10}
+CLUSTER=${11}
+
+R_STOP=$(($1 + ($2 * ($3 - 1))))
+G_STOP=$(($4 + ($5 * ($6 - 1))))
+
+echo r stops at ${R_STOP}
+echo g stops at ${G_STOP}
 
 NAME="scan_n${N}_r${R_START}-${R_STOP}_step${R_STEP}_g${G_START}-${G_STOP}_step${G_STEP}_mod${MOD}_c${CMOD}"
 
@@ -67,7 +75,7 @@ CURRENT_RATE=$1
 #usage deprecated
 #R_RUNS=$(python -c 'from sys import argv; res=((float(argv[2]) - float(argv[1])) / float(argv[3])); print(int(res))' "$1" "$2" "$3")
 #G_RUNS=$(python -c 'from sys import argv; res=((float(argv[2]) - float(argv[1])) / float(argv[3])); print(int(res))' "$4" "$5" "$6")
-TOTAL_RUNS=$($3 * $6)
+TOTAL_RUNS=$(($3 * $6))
 
 if [ $TOTAL_RUNS -ne 32 ]
 then 
@@ -76,20 +84,15 @@ then
 	exit
 fi
 
-$R_STOP=$($1 + $2 * ($3 - 1)) 
-$G_STOP=$($4 + $5 * ($6 - 1)) 
-echo r stops at $R_STOP
-echo g stops at $G_STOP
-
-$R_RUNS=$($3 - 1)
-G_RUNS=$($6 - 1)
+R_RUNS=$(($3 - 1))
+G_RUNS=$(($6 - 1))
 for (( c=0; c<=$R_RUNS; c++ ))
 do
 CURRENT_STRENGTH=$4
 
 	for (( d=0; d<=$G_RUNS; d++ ))
 	do
-		srun --exclusive --ntasks 1 python slurm_run_with_user_input.py $N $CURRENT_RATE $CURRENT_STRENGTH $CPUS $NAME $MOD $CMOD & #order: n r g cpus_per_task name mod c
+		srun --exclusive --ntasks=1 python slurm_run_with_user_input.py $N $CURRENT_RATE $CURRENT_STRENGTH $CPUS $NAME $MOD $CMOD $SAVE $CLUSTER& #order: n r g cpus_per_task name mod c
 		CURRENT_STRENGTH=$(python -c 'from sys import argv; print(float(argv[1]) + float(argv[2]))' "$CURRENT_STRENGTH" "$5")
 	done
 	

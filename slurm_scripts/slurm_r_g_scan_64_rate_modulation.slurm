@@ -45,16 +45,16 @@ G_STEP=$5
 MOD=$8
 CMOD=$9
 SAVE=${10}
-CLUSTEER=${11}
+CLUSTER=${11}
 
-R_STOP=$(($1 + ($2 * ($3 - 1))))
+#R_STOP=$(($1 + ($2 * ($3 - 1))))
 G_STOP=$(($4 + ($5 * ($6 - 1))))
 
 echo r stops at ${R_STOP}
 echo g stops at ${G_STOP}
 
 
-NAME="scan_n${N}_r${R_START}-${R_STOP}_step${R_STEP}_g${G_START}-${G_STOP}_step${G_STEP}_mod${MOD}_c${CMOD}"
+NAME="scan_n${N}_r${R_START}-7.0_step${R_STEP}_g${G_START}-${GSTOP}_step${G_STEP}_mod${MOD}_c${CMOD}"
 
 CPUS=4
 
@@ -93,7 +93,7 @@ CURRENT_STRENGTH=$4
 
 	for (( d=0; d<=$G_RUNS; d++ ))
 	do
-		srun --exclusive --ntasks=1 python slurm_run_with_user_input.py $N $CURRENT_RATE $CURRENT_STRENGTH $CPUS $NAME $MOD $CMOD $SAVE $CLUSTER & #order: n r g cpus_per_task name mod c save_raw
+		srun --exclusive --ntasks=1 python slurm_run_with_user_input_rate_modulation.py $N $CURRENT_RATE $CURRENT_STRENGTH $CPUS $NAME $MOD $CMOD $SAVE $CLUSTER & #order: n r g cpus_per_task name mod c save_raw
 		CURRENT_STRENGTH=$(python -c 'from sys import argv; print(float(argv[1]) + float(argv[2]))' "$CURRENT_STRENGTH" "$5")
 	done
 	
