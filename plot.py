@@ -331,11 +331,13 @@ def plot_cap_histogram(path, threshold):
     with open(path, "rb") as file:
         result = pickle.load(file)
         caplist = [
-            cap["score"]
+            cap["score"] #(cap["delay"], )
             for cap in result["allcaps"]
             if cap["score"] > threshold
         ]
+    #breakpoint()
     plt.hist(caplist, density=False, bins=100)
+    plt.show()
 
 
 def plot_capacity_grid(folder, x="mod", y="c"):
@@ -503,6 +505,7 @@ def plot_capacities(pathorvec, axs=None):
     axs.semilogy(delrange, vec[:, 3][delrange], label="$\mathcal{o}^4$")
     axs.set_xlabel("maximal delay")
     axs.set_ylabel("total capacity")
+    plt.show()
     return axs
 
 
@@ -761,7 +764,7 @@ def rasta_nmda_only(
 
 
 def rasta_nmda(
-    raw_data, results, plotrange=(2000, 3000), l_min=30, N=250, plot_seq=False
+    raw_data, results, plotrange=(2000, 3000), l_min=30, N=250, plot_seq=False, ax=None, partial_return=False
 ):
     with open(raw_data, "rb") as file:
         data = pickle.load(file)
@@ -778,6 +781,10 @@ def rasta_nmda(
         [nmda_data[neuron_id]["rel_up"] for neuron_id in nmda_data]
     ) / len(nmda_data)
     fig, axs = plt.subplots(3)
+    
+    if ax != None:
+        axs[0] = ax
+    
     # axs[0].fill_between(np.arange(t_start, t_stop), np.zeros(t_stop-t_start), np.ones(t_stop-t_start)*int(results['N']*0.8), facecolor='blue', alpha=0.2, label = 'excitatory')
     axs[0].fill_between(
         np.arange(t_start, t_stop),
@@ -787,6 +794,34 @@ def rasta_nmda(
         alpha=0.2,
         label="inhibitory",
     )
+    
+    cluster = int(results["N_cl"])
+    ncol = 1
+    fontsize = 9
+    cmap = plt.cm.get_cmap('viridis')
+    
+    if cluster > 20:
+        ncol = 3
+        fontsize = 8
+    elif cluster > 10:
+        ncol = 2
+    
+    #identify clusters by colorblocking
+    for i in range(0, cluster):
+        
+        if i%2 == 0:
+            color = cmap(1/cluster * i/2)
+        else:
+            color = cmap(1/cluster * (cluster - (i - 1)/2))
+        
+        axs[0].fill_between(
+            np.arange(t_start, t_stop),
+            np.ones(t_stop - t_start) * int(results["N"] * 0.8 * 1/cluster * (cluster - i)),
+            np.ones(t_stop - t_start) * int(results["N"] * 0.8 * 1/cluster * (cluster - (i + 1))),
+            facecolor=color,
+            alpha=0.2,
+            label="cluster {}".format(i + 1),
+        )
 
     if hasattr(data["seq"], "__len__"):
         ax_seq = axs[0].twinx()
@@ -834,7 +869,11 @@ def rasta_nmda(
         "average relative time in upstate is {} %".format(avg_rel_up)
     )
     axs[1].set_xlim(plotrange[0], plotrange[1])
-    axs[0].legend(loc=1)
+    axs[0].legend(bbox_to_anchor=(1.001, 1), loc="upper left", fontsize=fontsize, ncol=ncol)
+    
+    #breakpoint()
+    if partial_return:
+        return axs[0]
 
     # firing rate histogram --> new spikelist without prerun
     spikelist = sg.create_SpikeList(
@@ -855,8 +894,8 @@ def rasta_nmda(
         )
     )
 
-    plt.tight_layout()
-
+    #plt.tight_layout()
+    
     return fig, axs
 
 
@@ -891,7 +930,10 @@ def pretty_nmda_traces(
     # ax1 = ax.twiny()
     # ax1.set_xlim(time_int)
     # ax1.set_xticks([2000,2100])
+    ax.set_title("neuron id: {}".format(idd))
+    ax.patch.set_alpha(0.01)
     ax = pltst.drawScaleBars(ax, xlabel="ms", ylabel="mV")
+    
     return ax
 
 
@@ -1125,19 +1167,431 @@ def plot_cap_heatmap(folder_caps=False, lable=False, plotcap=True):
     """
     plt.tight_layout()
     plt.show()
+    
+    
+def plot_transition_rate_graph(
+    res,
+    ax,
+    plot_name,
+    lable_name,
+    color,
+    run=0,
+    title="transition_rate_test",
+    fontsize=18,
+):
+    #results = load_results(folder)
+    label = "mod: {}, c: {}".format(res[0]["mod"], res[0]["c"])
+    res = pd.DataFrame(res)
+    res.sort_values(by=['r_bg'], inplace=True)
+    rate = res.loc[:,"r_bg"]
+    value = res.loc[:,plot_name]
+    ax.plot(rate, value, color=color, label=label) #'tab:orange'
+    #cmap = plt.cm.get_cmap('magma')
+    #color = cmap(0.9) light red
+    ax.set_facecolor('0.8')
+    ax.patch.set_alpha(0.2)
+    ax.grid(axis='y')
+    x_left, x_right = ax.get_xlim()
+    y_low, y_high = ax.get_ylim()
+    #ax.set_yticks(np.arange(ylow, yhigh, yticks))
+    y_label = lable_name
+    ax.set_ylabel(y_label, fontsize=fontsize)
+    if run == 0:
+        ax.legend(bbox_to_anchor=(1.001, 1), loc="upper left", fontsize=10)
+    if run == 3:
+        x_label = "background rate [Hz]"
+        ax.set_xlabel(x_label, fontsize=fontsize)
+        ax.tick_params(labelsize=16)
+        ax.text(0, -0.21, title, fontsize=fontsize)
+        
+    return ax
+    
+    
+def look_up(value):
+    if value == 0.0:
+        return 0
+    elif value == 0.2:
+        return 1
+    elif value == 0.4:
+        return 2
+    elif value == 0.6:
+        return 3
+    elif value == 0.8:
+        return 4
+    elif value == 0.9:
+        return 5
+        
+def look_up_threshold(n):
+    #breakpoint()
+    if n == 2500:
+        return 0.055452/2
+    elif n == 5000:
+        return 0.10763/2
+        
+def look_up_r(n, mod, c):
+    rates = [10.65, 10.65, 10.6, 10.55, 10.65, 10.6, 10.6, 10.6, 10.65, 10.65, 10.6, 10.6, 10.6, 10.6, 10.6, 10.6, 10.5, 10.6, 10.65, 10.7, 10.7, 10.7, 10.7, 10.7,
+            #n2500
+            7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.55, 7.6, 7.55, 7.55, 7.6, 7.6,
+            #n5000
+            5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45, 5.45]
+            #n10000
+        
+    i = int(round(n/2500, 1)) #1,2,3
+    j = int(round(mod/0.2, 1)) #0,1,2,3,4, 5
+    if mod == 0.9:
+        j = 5
+    k = int(round(c/0.2, 1)) # 1,2,3,4
+    #breakpoint()
+    return rates[(i - 1) * 24 + j * 4 + (k - 1)]
 
 
 if __name__ == "__main__":
+    
+    #############################################
+    ##          rasta nmda plotting            ##
+    #############################################
+    
+    if argv [1] == "rasta_nmda":
+        # fig, axs = plt.subplots(2)
+        path = "/home/noah/Thesis_Git/clustered_memory_network/output/" + argv[2]
+        path_raw = "raw/" + argv[3] #"raw/raw_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.p" 
+        path_res = "res/" + argv[4] #"res/_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.json"
+        rasta_nmda(
+            path
+            + path_raw,
+            path
+            + path_res,
+            plotrange=(0000, 4000),
+        )
+        plt.show()
+    
+    #############################################
+    ## custom rasta nmda plus traces  plotting ##
+    #############################################
+    
+    elif argv [1] == "rasta_nmda_plus_traces":
+        
+        mosaic = """AA;..;.B;..;.C;..;.D;..;.E;..;.F""" #.G;.H;.I;.J;.K"""
+        fig = plt.figure()
+        ax_dict = fig.subplot_mosaic(mosaic, height_ratios=[5,0.25,1.75,0.25,1.75,0.25,1.75,0.25,1.75,0.25,1.75], width_ratios=[0.975,1.025])
+        #identify_axes(ax_dict)
+        
+        path = "/home/noah/Thesis_Git/clustered_memory_network/output/" + argv[2]
+        path_raw = "raw/" + argv[3] #"raw/raw_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.p" 
+        path_res = "res/" + argv[4] #"res/_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.json"
+        
+        ax_dict["A"]=rasta_nmda(
+                        path
+                        + path_raw,
+                        path
+                        + path_res,
+                        plotrange=(0000, 4000),
+                        ax=ax_dict["A"],
+                        partial_return=True,
+                        )
+                        
+        with open(path+path_res, "rb") as file:
+            results = json.load(file)
+            
+        fig.suptitle(
+            "mod = {}, c = {}, g = {}, r = {} \n N_s = {}, cc = {}, cv ={}, inp_str={}".format(
+                results["mod"],
+                results["c"],
+                results["g"],
+                results["r_bg"],
+                results["N_silent"],
+                results["avg_cc"],
+                results["avg_cv"],
+                results["inp_str"],
+            )
+        )
+                            
+        dict_array=["B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
+        
+        for i in range (0, 5):
+            pretty_nmda_traces(
+                ax=ax_dict[dict_array[i]],
+                raw_data=path + path_raw,
+                neuron_id=i * 4,
+                color=['r', 'b', 'g', 'm', 'y'],
+                comps=["v_comp1", "v_comp2", "v_comp3", "v_comp4", "v_comp5"],
+                time_int=(2000, 4000)
+            )
+            
+        plt.show()
+            
+    #############################################
+    ##          nmda trace plotting            ##
+    #############################################
+    
+    elif argv[1] == "nmda_traces":
+        fig, axs = plt.subplots(20, 1)
+        path = "/home/noah/Thesis_Git/clustered_memory_network/output/" + argv[2]
+        path_raw = "raw/" + argv[3]
+        
+        for i in range (0, 20):
+            pretty_nmda_traces(
+                ax=axs[i],
+                raw_data=path + path_raw,
+                neuron_id=i,
+                color=['r', 'b', 'g', 'm', 'y'],
+                comps=["v_comp0", "v_comp1", "v_comp2", "v_comp4", "v_comp5"],
+                time_int=(2000, 4000),
+            )
+        
+        plt.show()
+    
+    #############################################
+    ##           heatmap plotting              ##
+    #############################################
+    
+    elif argv[1] == "heatmap":
+    
+        fig, axs = plt.subplots(2,2)
+        fig.suptitle(argv[2], fontsize=20)
+    
+        #usage: name_of_src_folder plot_mod_c/rbg_g
+        path = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/"
+        path_res_folder = argv[2] + "res/"
+    
+        coolwarm = sns.color_palette("coolwarm", as_cmap=True)
+    
+        name = ["avg_rate", "avg_cv", "avg_cc", "relative_upstate"] #column name of data to plot
+        title = ["average rate [Hz]", "CV", "CC", "rel. upstate [%]"]
+        cmap_lim = [None,None]
+    
+        x = "r_bg"
+        y = "g"
+    
+        if argv[3] == "mod_c":
+            x = "mod"
+            y = "c"
+    
+        for i in range (0,2):
+            for j in range (0,2):
+            
+                cmap_lim = [None,None]
+                
+                if i == 0 and j == 0:
+                    cmap_lim = [0,20]
+                elif i == 0 and j == 1 : 
+                    cmap_lim = [0,1]
+                elif i == 1 and j == 0:
+                    cmap_lim = [0, 0.01]
+                    
+                pretty_heatmap(
+                    path 
+                    + path_res_folder,
+                    ax=axs[i][j],
+                    name=name[i*2 + j],
+                    cmap=coolwarm,
+                    y=y,
+                    x=x,
+                    title=title[i*2 + j],
+                    fontsize=18,
+                    cmap_lim=cmap_lim,
+                    cbar_shrink=0.7,
+                )
+        
+        plt.show()
+        
+    #############################################
+    ##       transition rate plotting          ##
+    #############################################
+    
+    elif argv[1] == "transition_rate":
+    
+        #usage: n 
+        #plotted for transition rate of n, g 20.0, mod 0.0, c 0.2
+        
+        cluster = 0
+        if argv[2] == "2500":
+            cluster = "10"
+        elif argv[2] == "5000":
+            cluster = "20"
+        elif argv[2] == "10000":
+            cluster = "40"
+            
+        plot_name_array=["avg_rate", "avg_cv", "avg_cc", "avg_nmda_length", "relative_upstate"]
+        lable_name_array=["avg. rate", "avg. CV", "avg. CC", "avg. nmda length", "rel NMDA[%]"]
+        
+        fig, axs = plt.subplots(5,1)
+        fig.suptitle("n" + argv[2] + "_transition_rate_scan_g20.0_mod0.0-0.9_c0.2-0.8_cl" + cluster, fontsize=20)
+        
+        folder = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/n" + argv[2] + "_transition_rate_scans_mod0.0-0.9_c0.2-0.8_g20.0_cl" + cluster + "_std-scaled/dend20/"
+        #path_res_folder = "n" + argv[2] + "_transition_rate_scan_g20.0_cl" + cluster + "std-scaled/res/"
+        
+        #cmap = plt.cm.get_cmap('viridis')
+        #cmap_index = 0
+        color_index = 0
+        
+        for path in os.listdir(folder):
+            res_folder = os.path.join(folder, path)
+            res_folder = res_folder + "/res/"
+            
+            res = load_results(res_folder)
+            #breakpoint()
+            
+            color = ['r', 'b', 'g', 'y', 'k', 'm'] #cmap(cmap_index/len(os.listdir(folder)))
+            
+            for i in range(0,5):
+                #if i == 1:
+                #    ylow = 0.35
+                #    yhigh = 0.6
+                #    yticks = 0.05
+                #elif i == 2:
+                #    ylow = 0
+                #    yhigh = 0.008
+                #    yticks = 0.002
+                    
+                #if i == 1 or i == 2:
+                #    plot_transition_rate_graph(
+                #        res,
+                #        ax=axs[i],     
+                #        plot_name=plot_name_array[i],
+                #        lable_name=lable_name_array[i],
+                #        title= "n" + argv[1] + "_transition_rate_scan_g20.0_mod0.0_c0.2_cl" + cluster,
+                #        ylow=ylow,
+                #        yhigh=yhigh,
+                #        yticks=yticks,
+                #    )
+                #else:
+                plot_transition_rate_graph(
+                    res,
+                    ax=axs[i],     
+                    plot_name=plot_name_array[i],
+                    lable_name=lable_name_array[i],
+                    color=color[color_index%6],
+                    run=i,
+                    title= "n" + argv[1] + "_transition_rate_scan_g20.0_mod0.0_c0.2_cl" + cluster,
+                )
+                
+            color_index += 1
+        
+        plt.show()
+       
+    #############################################
+    ##         capacity test plotting          ##
+    #############################################
+    
+    elif argv[1] == "cap_bars_test":
 
-    # fig, axs = plt.subplots(2)
-    path = "/home/noah/Thesis_Git/clustered_memory_network/output/" + argv[1]
-    path_raw = "raw/" + argv[2] #"raw/raw_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.p" 
-    path_res = "res/" + argv[3] #"res/_r15.0_g14.0_mod0.0_c0.2_str0.1_step50.0_weight0.00025.json"
-    rasta_nmda(
-        path
-        + path_raw,
-        path
-        + path_res,
-        plotrange=(0000, 4000),
-    )
-    plt.show()
+        # load pickles with capacity results
+        results = load_results(argv[2], data_type="p")
+        maxdel = 10
+        maxdeg = 25
+        delrange = np.arange(1, maxdel)
+        fig, axs = plt.subplots(4,6)
+        #loop_it = 0
+        #with open(argv[2], "rb") as f:
+        #    results = pickle.load(f)
+        #breakpoint()
+        for res in results:
+            #print("new loop iteration")
+            #breakpoint()
+            totalcap, allcaps, numcaps, nodes = (
+                res["totalcap"],
+                res["allcaps"],
+                res["numcaps"],
+                res["nodes"],
+            )
+            i = look_up(float(res["c"])) - 1
+            j = look_up(float(res["mod"]))
+            threshold = look_up_threshold(int(res["N"]))
+            vec = cap2vec(allcaps, maxdel=maxdel, maxdeg=maxdeg, threshold=threshold)
+            axs[i][j].set_ylim(0, 25)
+            axs[i][j].set_xlim(0, 10)
+            title = "mod: {}, c: {}, r_bg: {}".format(res["mod"], res["c"], res["r_bg"])
+            axs[i][j].set_title(title)
+            if not i == 3:
+                axs[i][j].xaxis.set_ticks(np.arange(0, 10, 1), labels=[" ", " ", " ", " ", " ", " ", " ", " ", " ", " "])
+            else: 
+                axs[i][j].xaxis.set_ticks(np.arange(0, 10, 1))
+                
+            if not j == 0:
+                axs[i][j].yaxis.set_ticks(np.arange(0, 25, 5), labels=[" ", " ", " ", " ", " "])
+            else:
+                axs[i][j].yaxis.set_ticks(np.arange(0, 25, 5))
+            
+            bottom = np.zeros(len(delrange))
+            values = None
+            color_array = ['r', 'b', 'm', 'y', 'g']
+            for k in range(len(vec[0]) - 1):
+                values = vec[:, i][delrange - 1] #-1 ?
+                breakpoint()
+                color = color_array[k%5]
+                axs[i][j].bar(delrange, values, label=f"O({k+1})", bottom=bottom, color=color)
+                bottom += values
+                
+        plt.show()
+        
+    #############################################
+    ##          heatmap 4D plotting            ##
+    #############################################
+    
+    elif argv[1] == "heatmap_4D":
+    
+        fig = plt.figure()
+        subfigs = fig.subfigures(2,1, height_ratios=[1,3])
+        axs0 = subfigs[0].subplots(1,1)
+        axs1 = subfigs[1].subplots(5,6)
+        fig.suptitle("n" + argv[1] + "_" + argv[2], fontsize=20) #usage: #neurons value_to_plot
+    
+        r_start = "7.0"
+        r_end = "14.0"
+    
+        if argv[1] == "2500":
+            r_start = "7.0"
+            r_end = "14.0"
+        elif argv[1] == "5000":
+            r_start = "6.0"
+            r_end = "13.0"
+        elif argv[1] == "10000":
+            r_start = "5.0"
+            r_end = "12.0"
+     
+        #usage: name_of_src_folder
+        path_default = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/" + "n" + argv[1] + "_scans" + "/default_full_scan_mod0.0_c0.2/res/"
+        path_detail = "/home/noah/Thesis_Git/clustered_memory_network/output/jureca_scans/" + "n" + argv[1] + "_scans" + "/detail_scans_r" + r_start + "-" + r_end + "_g5.0-32.0"
+    
+        coolwarm = sns.color_palette("coolwarm", as_cmap=True)
+    
+        name = argv[2] #column name of data to plot
+      
+        pretty_heatmap(
+                    path_default,
+                    ax=axs0,
+                    name=name,
+                    cmap=coolwarm,
+                    y="r_bg",
+                    x="g",
+                    title="n" + argv[1] + "_" + argv[2] + "_default_full_scan_mod0.0_c0.2",
+                    fontsize=18,
+                    cmap_lim=[None,None],
+                    cbar_shrink=0.7,
+                )
+        mod_array = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
+        c_array = ["0.2", "0.4", "0.6", "0.8", "1.0"]
+        cmap_lim = [None,None]
+        for i in range (0,5):
+            for j in range (0,6):
+                
+                mod = mod_array[j]
+                c = c_array[i]
+                path_end = "/scan_n" + argv[1] + "_r" + r_start + "-" + r_end + "_step1.0_g5.0-32.0_step1.0_mod" + mod + "_c" + c + "/res/"
+                title = "mod" + mod + "_c" + c
+                    
+                pretty_heatmap(
+                    path_detail + path_end,
+                    ax=axs1[i][j],
+                    name=name,
+                    cmap=coolwarm,
+                    y="r_bg",
+                    x="g",
+                    title=title,
+                    fontsize=18,
+                    cmap_lim=cmap_lim,
+                    cbar_shrink=0.7,
+                )
+            
+        plt.show()
