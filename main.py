@@ -33,6 +33,7 @@ class PostProcessing(Enum):
     # types of post processing calculations which also determines the data which is recorded
 
     CAPACITY = 'cap'
+    EXTERNAL = 'ext_cap' #only save sequnce and state_matrix info (plus "steps", "tsteps", "N", and "ex._ids")
     NETWORK_NMDA_STATS = 'stats'
     SCALING = 'scal'
 
@@ -77,7 +78,9 @@ def simulate(
     steps=None,
     rec_plottrace=False,
     rec_inp=False,
-    raw_path=False):
+    raw_path=False,
+    scale_std=False
+    ):
     '''
     simulate the clustered network
     
@@ -141,7 +144,7 @@ def simulate(
     if inp_type == Input.RATE_MODULATION:
         pre_steps = int(1000 / tstep)
         seq = np.random.uniform(low=-1.0, high=1.0, size=steps + pre_steps)
-        network.poisson_inp(inp_seq=seq, inp_str=inp_str, tstep=tstep)
+        network.poisson_inp(inp_seq=seq, inp_str=inp_str, tstep=tstep, scale_std=scale_std, n_cl=n_cl)
         seq = seq[pre_steps:]
 
     elif inp_type == Input.CONST_RATE:
@@ -152,6 +155,10 @@ def simulate(
     rec_voltages = False
     rec_sequence = False  # more like save sequence
     if post_proc == PostProcessing.CAPACITY:
+        network.record_spikes(rec_inp=rec_inp)
+        rec_spikes = True
+        rec_sequence = True
+    elif post_proc == PostProcessing.EXTERNAL:
         network.record_spikes(rec_inp=rec_inp)
         rec_spikes = True
         rec_sequence = True
@@ -176,9 +183,10 @@ def simulate(
 
 
 def post(raw, post_proc, params):
-
     if post_proc == PostProcessing.CAPACITY:
-        results = sg.post_proc_capacity(raw_data=raw)
+        results = sg.pproc_capacity(raw_data=raw)
+    elif post_proc == PostProcessing.EXTERNAL:
+        results = sg.pproc_capacity(raw_data=raw, external=True)
     elif post_proc == PostProcessing.NETWORK_NMDA_STATS:
         results = sg.network_nmda_stats(raw, params)
     elif post_proc == PostProcessing.SCALING:
@@ -213,6 +221,8 @@ def run(
     rec_plottrace=False,
     rec_inp=False,
     raw_path=False,
+    save_raw=True,
+    scale_std=False,
 ):
 
     '''
@@ -296,12 +306,41 @@ def run(
             n_cores=n_cores,
             rec_plottrace=rec_plottrace,
             rec_inp=rec_inp,
+            scale_std=scale_std
         )
         raw = raw | params
-        with open(
-            "output/" + outdir + "/raw/" + "raw" + filename + ".p", "wb"
-        ) as f:
-            pickle.dump(raw, f)
+        
+        if save_raw and not post_proc == PostProcessing.EXTERNAL:
+            with open(
+                "output/" + outdir + "/raw/" + "raw" + filename + ".p", "wb"
+            ) as f:
+                pickle.dump(raw, f)
+        elif save_raw and post_proc == PostProcessing.EXTERNAL:
+            spk_list = sg.create_SpikeList(
+                raw,
+                n,
+                t_start=2000.0,
+                t_stop=2000 + steps * tstep,
+            )
+            ex_spk_list = spk_list.id_slice(raw["excitatory_ids"])
+
+            state_mat = sg.spklst_to_ratestate(
+                ex_spk_list, steps=steps, tstep=tstep
+            )
+            tmp = {
+                "seq": raw["seq"], 
+                "excitatory_ids": raw["excitatory_ids"]
+            }
+            raw.clear()
+            raw["seq"] = tmp["seq"]
+            raw["state_matrix"] = state_mat
+            #raw["excitatory_ids"] = tmp["excitatory_ids"]  state_mat already computed
+            raw = raw | params
+            
+            with open(
+                "output/" + outdir + "/raw/" + "raw" + filename + ".p", "wb"
+            ) as f:
+                pickle.dump(raw, f)
 
     elif raw_path == True:
         with open(
@@ -311,16 +350,21 @@ def run(
     else:
         with open(raw_path, "rb") as f:
             raw = pickle.load(f)
-
-    # postprocessing
-    results = post(raw, post_proc, params)
-    results = results | params
-
+    
+    if (post_proc == PostProcessing.EXTERNAL and raw_path) or not post_proc == PostProcessing.EXTERNAL:
+        # postprocessing
+        #breakpoint()
+        results = post(raw, post_proc, params)
+        results = results | params
+    
+    #breakpoint()
     if (
-        post_proc == PostProcessing.CAPACITY
+        post_proc == PostProcessing.CAPACITY or (post_proc == PostProcessing.EXTERNAL and raw_path)
     ):  # save as pickle if we we run the capacity calculation
-        with open("output/" + outdir + "/res/res" + filename + ".p", "wb") as f:
+        with open("output/" + outdir + "/res/res_cap" + filename + ".p", "wb") as f:
             pickle.dump(results, f)
+        #with open("output/" + outdir + "/res/" + filename + ".json", "w") as f:
+        #    json.dump(results, f)
     elif post_proc == PostProcessing.NETWORK_NMDA_STATS:
         with open(
             "output/" + outdir + "/res/" + filename + ".json", "w"

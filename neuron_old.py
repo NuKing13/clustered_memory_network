@@ -38,14 +38,14 @@ class L5pyr_simp_sym:
         self.type = "L5pyr_simp"
         self.n_dend = n_dend
 
-        #if not n_dend == 5:
-        #    assert ValueError("we can only use 5 dendrites at the moment")
+        if not n_dend == 5:
+            assert ValueError("we can only use 5 dendrites at the moment")
 
         self.leaf_idxs = [i for i in range(1, self.n_dend + 1)]
         self.v_comps = [f"v_comp{i}" for i in self.leaf_idxs]
         self.w_dend = [1.0] * len(self.leaf_idxs)
-        self.exc_rec = [i for i in range(0, self.n_dend + 1)]
-        self.inh_rec = [i for i in range(self.n_dend + 1, (self.n_dend + 1) * 2)]
+        self.exc_rec = [0, 1, 2, 3, 4, 5]
+        self.inh_rec = [6, 7, 8, 9, 10, 11]
 
     def create(
         self,
@@ -63,25 +63,53 @@ class L5pyr_simp_sym:
         # define the model with its compartments
         cm_pop = nest.Create("cm_default", n_neurons)
 
-        compartments = ({"parent_idx": -1, "params": soma_params_},)
-        for i in range(1, self.n_dend + 1):
-            compartments += ({"parent_idx": 0, "params": dend_params},)
-        cm_pop.compartments = compartments
+        cm_pop.compartments = [
+            {"parent_idx": -1, "params": soma_params_},
+            {"parent_idx": 0, "params": dend_params},
+            {"parent_idx": 0, "params": dend_params},
+            {"parent_idx": 0, "params": dend_params},
+            {"parent_idx": 0, "params": dend_params},
+            {"parent_idx": 0, "params": dend_params},
+        ]
+        #breakpoint()
         # add the dendritic receptors
-        receptors = ( # AMPA receptors to all dendritic compartments
-                    {"comp_idx": 0, "receptor_type": "AMPA", "params": AMPA_params},)
-        for i in range(1, self.n_dend + 1):
-            receptors += ({
-                "comp_idx": i,
+        cm_pop.receptors = [
+            # AMPA receptors to all dendritic compartments
+            {"comp_idx": 0, "receptor_type": "AMPA", "params": AMPA_params},
+            {
+                "comp_idx": 1,
                 "receptor_type": "AMPA_NMDA",
                 "params": AMPA_NMDA_params,
-            },)
-        
-        for i in range(0, self.n_dend + 1):
+            },
+            {
+                "comp_idx": 2,
+                "receptor_type": "AMPA_NMDA",
+                "params": AMPA_NMDA_params,
+            },
+            {
+                "comp_idx": 3,
+                "receptor_type": "AMPA_NMDA",
+                "params": AMPA_NMDA_params,
+            },
+            {
+                "comp_idx": 4,
+                "receptor_type": "AMPA_NMDA",
+                "params": AMPA_NMDA_params,
+            },
+            {
+                "comp_idx": 5,
+                "receptor_type": "AMPA_NMDA",
+                "params": AMPA_NMDA_params,
+            },
             # AMPA+NMDA receptors to all dendritic compartments
-            receptors += ({"comp_idx": i, "receptor_type": "GABA", "params": GABA_params},)
-        #breakpoint()
-        cm_pop.receptors = receptors
+            {"comp_idx": 0, "receptor_type": "GABA", "params": GABA_params},
+            {"comp_idx": 1, "receptor_type": "GABA", "params": GABA_params},
+            {"comp_idx": 2, "receptor_type": "GABA", "params": GABA_params},
+            {"comp_idx": 3, "receptor_type": "GABA", "params": GABA_params},
+            {"comp_idx": 4, "receptor_type": "GABA", "params": GABA_params},
+            {"comp_idx": 5, "receptor_type": "GABA", "params": GABA_params},
+        ]
+
         return cm_pop
 
 
