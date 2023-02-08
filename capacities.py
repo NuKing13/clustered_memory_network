@@ -87,11 +87,13 @@ def generate_task(
     delay=1,
     powerlist=[1],
 ):
+    #print("generating task")
     # calculate the desired output for the current iterator position and given input
     inp = scipy.atleast_2d(input.flatten()).T
     output = scipy.ones((inp.shape[0], 1))
     for i in scipy.arange(variables):
-        pos = positions[i] + delay - 1
+        pos = positions[i] + delay - 1 
+        print(pos)
         if pos == 0:
             task = taskfun(powerlist[i], inp)
         else:
@@ -120,12 +122,13 @@ def cov_capacity(
             np.dot(states.T, states) / states.shape[0], return_rank=True
         )
         print("Estimated rank of state covariance matrix = ", crank)
-
+    
     for k in range(target.shape[1]):
         P = np.dot(states.T, target[:, k : k + 1]) / (states.shape[0])
         score[k] = (np.dot(np.dot(P.T, R_inv), P)) / np.mean(
             target[:, k : k + 1] * target[:, k : k + 1]
         )
+    print(score)
 
     totalscore = np.sum(score)
 
@@ -175,9 +178,9 @@ class capacity_iterator:
         delskip=0,
         delhold=0,
         mindeg=1,
-        maxdeg=100,
+        maxdeg=25,
         minwindow=1,
-        maxwindow=10000,
+        maxwindow=1000,
         windowskip=0,
         minvars=1,
         maxvars=100,
@@ -188,12 +191,12 @@ class capacity_iterator:
         d_threshold=0.001,
         a_threshold=1.0,  # PCA_threshold=1.0e-10,
         m_delay=True,
-        m_windowpos=False,
+        m_windowpos=True,
         m_window=False,
         m_powerlist=False,
-        m_variables=False,
-        m_degrees=False,
-        maxbases=1000000,
+        m_variables=True,
+        m_degrees=True,
+        maxbases=1000000, #1000000,
         verbose=0,
         debug=False,
         profile=True,
@@ -341,7 +344,8 @@ class capacity_iterator:
         if self.dimensions > 1:
             # self.corrmat=np.cov(estates)
             covmat = np.dot(estates.T, estates) / estates.shape[0]
-            self.corrmat, crank = scipy.linalg.pinv2(
+            #breakpoint()
+            self.corrmat, crank = scipy.linalg.pinv(
                 covmat, return_rank=True, cond=self.corr_cond
             )
             print("Estimated rank of state covariance matrix = ", crank)
@@ -349,7 +353,10 @@ class capacity_iterator:
             self.corrmat = np.ones((1, 1))
 
         # states=states
-
+        #breakpoint()
+        my_deg = self.degree
+        my_del = self.delay
+        
         while donext:
             outputs = self.task(inputs)
             samples = float(estates[self.delay + self.window - 2 :, :].shape[0])
@@ -373,8 +380,15 @@ class capacity_iterator:
                     threshold = self.a_threshold
 
             self.score(score, threshold)
-            donext = self.next()
 
+            if self.degree != my_deg or self.delay != my_del:
+                print("degree, delay: ")
+                print(self.degree, self.delay)
+                my_deg = self.degree
+                my_del = self.delay
+                
+            donext = self.next()
+    
         if self.verbose >= -1:
             tag = "Total capacity=%(score).3f (%(perc).2f percent)" % {
                 "score": self.totalscore(),
@@ -502,7 +516,10 @@ class capacity_iterator:
         return tag
 
     def next(self):
-
+        #breakpoint()
+        print("bases, vars, delay, degree")
+        print(self.bases, self.variables, self.delay, self.degree)
+        
         if self.bases >= self.maxbases:
             return False
         if not (self.scored) and self.use_scores:
@@ -531,14 +548,17 @@ class capacity_iterator:
                 )
             )
         ):
+            print("first if")
             if self.delay + self.window - 1 < self.maxdel:
                 if (
                     self.holding < self.delhold
                     and self.delay > self.delskip
                     and self.current_score <= 0.0
                 ):
+                    print("if")
                     self.holding += 1
                 else:
+                    print("else")
                     self.holding = 0
 
                 self.delay += 1
@@ -560,6 +580,7 @@ class capacity_iterator:
             or not (self.monotonous_windowpos)
             or (self.use_scores and self.monotonous_windowpos)
         ):
+            print("second if, next: for")
             if (
                 self.use_scores
                 and self.monotonous_windowpos
@@ -571,6 +592,8 @@ class capacity_iterator:
                 )
                 for index in scipy.arange(self.variables - 3, -1.0, -1.0):
                     # find last index that is not at its maximal value
+                    #breakpoint()
+                    index = int(index) #noah
                     if self.positions[index + 1] < maxpos[index]:
                         # determine number of indices before that
                         if index == 0:
@@ -595,7 +618,7 @@ class capacity_iterator:
                 return True
         self.delay_score = 0.0
         self.window_score += self.windowpos_score
-
+        #breakpoint()
         if (
             self.window <= self.windowskip
             or not (self.use_scores)
@@ -606,6 +629,7 @@ class capacity_iterator:
                 and (self.windowpos_score > 0.0)
             )
         ):
+            print("third if")
             if (self.window < self.maxwindow) and (
                 (self.window < self.maxdel - self.delay + 1)
                 or not (self.monotonous_window)
@@ -629,7 +653,8 @@ class capacity_iterator:
                 and self.monotonous_powerlist
                 and (self.window_score > 0.0)
             )
-        ):
+        ):  
+            print("fourth if")
             newpowers = self.__nextpowers()
             if len(newpowers) > 0:
                 self.powerlist = newpowers
@@ -651,7 +676,8 @@ class capacity_iterator:
                 and self.monotonous_variables
                 and ((self.powerlist_score > 0.0) or self.variables == 1)
             )
-        ):
+        ):  
+            print("fifth if")
             if self.variables < self.maxvars:
                 if self.variables < self.degree:
                     self.variables += 1
@@ -689,6 +715,7 @@ class capacity_iterator:
                 )
             )
         ):
+            print("sixth if")
             if self.degree < self.maxdeg:
                 self.degree += 1
                 self.variables = self.minvars

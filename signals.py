@@ -1369,20 +1369,25 @@ def nmda_distribution(path):
     """
 
 
-def pproc_capacity(raw_data):
-    spk_list = create_SpikeList(
-        raw_data,
-        raw_data["N"],
-        t_start=2000.0,
-        t_stop=2000 + raw_data["steps"] * raw_data["tstep"],
-    )
-    ex_spk_list = spk_list.id_slice(raw_data["excitatory_ids"])
+def pproc_capacity(raw_data, external=False):
+    if not external:
+        spk_list = create_SpikeList(
+            raw_data,
+            raw_data["N"],
+            t_start=2000.0,
+            t_stop=2000 + raw_data["steps"] * raw_data["tstep"],
+        )
+        ex_spk_list = spk_list.id_slice(raw_data["excitatory_ids"])
 
-    state_mat = spklst_to_ratestate(
-        ex_spk_list, steps=raw_data["steps"], tstep=raw_data["tstep"]
-    )
-    seq = raw_data["seq"]
-    seq = [[q] for q in seq]
+        state_mat = spklst_to_ratestate(
+            ex_spk_list, steps=raw_data["steps"], tstep=raw_data["tstep"]
+        )
+        seq = raw_data["seq"]
+        seq = [[q] for q in seq]
+    else:
+        state_mat = raw_data["state_matrix"]
+        seq = raw_data["seq"]
+    
     results = {}
     (
         results["totalcap"],
@@ -1396,6 +1401,7 @@ def pproc_capacity(raw_data):
 
 def calc_cap(seq, state_mat):
     Citer = cap.capacity_iterator()  # verbose = 1)
+    #breakpoint()
     totalcap, allcaps, numcaps, nodes = Citer.collect(seq, state_mat)
     print(
         "\nMeasured ",

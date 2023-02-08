@@ -131,7 +131,8 @@ class Network:
                     "receptor_type": rec_ids,
                 },
             )
-        # debug_test = [[list(np.sort(nest.GetConnections(self.E_pop, self.E_pop[ii]).get('receptor'))).count(i) for i in [2,4,6,8,10]] for ii in range(1,100)]
+        #debug_test = [[list(np.sort(nest.GetConnections(self.E_pop, self.E_pop[ii]).get('receptor'))).count(i) for i in [2,4,6,8,10]] for ii in range(1,100)]
+        #breakpoint()
 
     def connect_excitatory(self):
 
@@ -399,7 +400,7 @@ class Network:
             nest.Connect(self.stim_neurons, self.sr_inp)
 
 
-    def poisson_inp(self, inp_seq, inp_str, tstep):
+    def poisson_inp(self, inp_seq, inp_str, tstep, scale_std, n_cl):
         # gaussian bell with the peak moved over the excitatory population
         steps = len(inp_seq)
         self.t_sim = 1000.0 + steps * tstep
@@ -412,7 +413,12 @@ class Network:
             int(self.N_E / 100), self.N_E, int(self.N_E / 10), True
         ).reshape(int(self.N_E / 10), 1)
         zero_point = int(self.N_E / 2)
-        std = float(self.N_E / 20)
+        if scale_std:
+            std = float(self.N_E / (20 * (n_cl / 5)))
+            print("std is scaled")
+        else:
+            std = float(self.N_E / 20)
+            
         interval = 0.4 * self.N_E
 
         # stim_rates = np.array([stats.norm.pdf(stim_id, zero_point+ interval*val, std)*self.N_E for val in inp_seq])
@@ -420,7 +426,7 @@ class Network:
         stim_rates[:] = np.transpose(
             stats.norm.pdf(stim_id, zero_point + interval * inp_seq[:], std)
             * self.N_E
-        )
+            )
         base_rates = np.ones((len(inp_seq), int(self.N_E / 10)))
 
         rate_values = (
@@ -429,6 +435,8 @@ class Network:
             * 0.1
             * self.N_E
         ).tolist()
+        
+        #breakpoint()
         # rate_values = ((base_rates + self.inp_str*stim_rates) * self.inp_rate * 0.1 * self.N_E).tolist()
 
         del stim_rates
